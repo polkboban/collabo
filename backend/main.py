@@ -122,7 +122,7 @@ async def generate_campaign(request: CampaignRequest):
         twitter = output_data.get("twitter_thread", "")
         email = output_data.get("email_teaser", "")
 
-        full_md = f"# Campaign Kit\n\n## 📝 Blog Post\n{blog}\n\n---\n## 📱 Twitter Thread\n{twitter}\n\n---\n## ✉️ Email Teaser\n{email}"
+        full_md = f"# Campaign Kit\n\n## Blog Post\n{blog}\n\n---\n## Twitter Thread\n{twitter}\n\n---\n## Email Teaser\n{email}"
 
         return CampaignResponse(
             status="success",
