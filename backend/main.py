@@ -6,21 +6,30 @@ from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-# Load environment variables
 load_dotenv()
 
 app = FastAPI(title="Autonomous Content Factory API")
 
-# --- CORS SETUP ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], # Allows your Next.js frontend
+    allow_origins=["http://localhost:3000"], 
     allow_credentials=True,
-    allow_methods=["*"], # Allows all methods (POST, GET, etc.)
-    allow_headers=["*"], # Allows all headers
+    allow_methods=["*"], 
+    allow_headers=["*"], 
 )
 
-# --- API MODELS ---
+class CampaignKit(BaseModel):
+    blog_post: str = Field(description="The polished 500-word blog post in markdown format.")
+    twitter_thread: str = Field(description="The polished 5-post Twitter (X) thread.")
+    email_teaser: str = Field(description="The polished 1-paragraph email teaser.")
+
+class CampaignResponse(BaseModel):
+    status: str
+    blog_post: str
+    twitter_thread: str
+    email_teaser: str
+    campaign_markdown: str
+
 class CampaignRequest(BaseModel):
     source_material: str
     tone: str
@@ -32,11 +41,6 @@ class FactSheet(BaseModel):
     value_proposition: str = Field(description="The single most important benefit or 'hero' value proposition")
     ambiguous_statements: List[str] = Field(description="Flagged statements from the source that are confusing or lack detail")
 
-class CampaignResponse(BaseModel):
-    status: str
-    campaign_markdown: str
-
-# --- AI SETUP ---
 def get_llm():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -64,14 +68,12 @@ def create_agents(llm):
     )
     return researcher, copywriter, editor
 
-# --- API ENDPOINTS ---
 @app.post("/api/generate-campaign", response_model=CampaignResponse)
 async def generate_campaign(request: CampaignRequest):
     try:
         llm = get_llm()
         researcher, copywriter, editor = create_agents(llm)
 
-        # 1. Research Task
         t1_research = Task(
             description=f'Analyze this text: "{request.source_material}". Extract features, specs, audience, and the main value proposition. Flag any vague statements.',
             expected_output='A structured JSON Fact-Sheet.',
@@ -79,7 +81,6 @@ async def generate_campaign(request: CampaignRequest):
             output_json=FactSheet
         )
         
-        # 2. Copywriting Task
         t2_copy = Task(
             description=(f"Using ONLY the Fact-Sheet provided, generate: \n"
                          f"1) A 500-word Blog Post.\n"
@@ -92,15 +93,15 @@ async def generate_campaign(request: CampaignRequest):
             context=[t1_research]
         )
         
-        # 3. Editing Task
         t3_edit = Task(
             description=("Compare the Copywriter's drafts against the original Fact-Sheet.\n"
                          "Hallucination Check: If the Copywriter invented ANY features or specs not in the Fact-Sheet, reject it and rewrite it accurately.\n"
                          f"Tone Audit: Ensure the language matches the '{request.tone}' tone.\n"
-                         "Output the final, polished Campaign Kit containing the Blog, Thread, and Email."),
-            expected_output='A polished, hallucination-free markdown document with the 3 assets.',
+                         "Output the final assets perfectly separated into the required JSON structure."),
+            expected_output='A JSON object containing the blog_post, twitter_thread, and email_teaser perfectly separated.',
             agent=editor,
-            context=[t1_research, t2_copy]
+            context=[t1_research, t2_copy],
+            output_json=CampaignKit 
         )
 
         crew = Crew(
@@ -109,12 +110,26 @@ async def generate_campaign(request: CampaignRequest):
             process=Process.sequential
         )
 
-        # Execute the process
         result = crew.kickoff()
+        
+        output_data = result.json_dict
+        if not output_data: 
+            import json
+            raw_text = result.raw.replace("```json", "").replace("```", "").strip()
+            output_data = json.loads(raw_text)
+
+        blog = output_data.get("blog_post", "")
+        twitter = output_data.get("twitter_thread", "")
+        email = output_data.get("email_teaser", "")
+
+        full_md = f"# Campaign Kit\n\n## 📝 Blog Post\n{blog}\n\n---\n## 📱 Twitter Thread\n{twitter}\n\n---\n## ✉️ Email Teaser\n{email}"
 
         return CampaignResponse(
             status="success",
-            campaign_markdown=result.raw
+            blog_post=blog,
+            twitter_thread=twitter,
+            email_teaser=email,
+            campaign_markdown=full_md
         )
 
     except Exception as e:
