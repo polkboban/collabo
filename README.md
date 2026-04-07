@@ -4,6 +4,10 @@ Collabo is an AI-powered content generation platform that uses a multi-agent sys
 
 Instead of relying on a single LLM prompt, Collabo orchestrates a team of specialized AI agents—a **Researcher**, a **Copywriter**, and an **Editor**—to ensure the final output is factually accurate, perfectly formatted, and perfectly aligned with your brand voice.
 
+## Deployment
+
+Visit the site at : (https://collabo-one.vercel.app)
+
 ##  Key Features
 
 * **Multi-Agent Architecture:** Powered by CrewAI, tasks are divided logically. The Researcher extracts facts, the Copywriter crafts the narrative, and the Editor fact-checks against hallucinations.
@@ -36,3 +40,5 @@ Instead of relying on a single LLM prompt, Collabo orchestrates a team of specia
 * A [Groq](https://console.groq.com/) API Key
 * A [Supabase](https://supabase.com/) Project
 
+### Licence
+This project is open-source and available under the MIT License.
