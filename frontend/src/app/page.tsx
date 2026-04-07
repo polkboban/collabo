@@ -25,7 +25,7 @@ export default function App() {
   const [tone, setTone] = useState("Engaging & Punchy");
   const [isLoading, setIsLoading] = useState(false);
   const [streamMessage, setStreamMessage] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -76,18 +76,30 @@ export default function App() {
   };
 
   const loadCampaignFromHistory = (campaign: any) => {
-    setSourceMaterial(campaign.source_material);
-    setTone(campaign.tone);
+    setSourceMaterial(campaign.source_material || "");
+    setTone(campaign.tone || "Professional & Trustworthy");
     
-    const md = campaign.campaign_markdown || "";
-    const parts = md.split('---');
-    
-    setResult({
-      blog_post: parts[0] ? parts[0].replace('# Campaign Kit', '').replace('## Blog Post', '').trim() : "Content missing",
-      twitter_thread: parts[1] ? parts[1].replace('## Twitter Thread', '').trim() : "Content missing",
-      email_teaser: parts[2] ? parts[2].replace('## Email Teaser', '').trim() : "Content missing",
-      campaign_markdown: md
-    });
+    if (!campaign.campaign_markdown) {
+      setResult(null);
+      setIsHistoryOpen(false);
+      return;
+    }
+
+    try {
+      // Try to parse the new dynamic JSON format!
+      const parsedResult = JSON.parse(campaign.campaign_markdown);
+      setResult(parsedResult);
+    } catch (e) {
+      // Fallback for your older hardcoded campaigns before the upgrade
+      const md = campaign.campaign_markdown;
+      const parts = md.split('---');
+      
+      setResult({
+        blog_post: parts[0] ? parts[0].replace('# Campaign Kit', '').replace('## Blog Post', '').trim() : "Content missing",
+        twitter_thread: parts[1] ? parts[1].replace('## Twitter Thread', '').trim() : "Content missing",
+        email_teaser: parts[2] ? parts[2].replace('## Email Teaser', '').trim() : "Content missing"
+      });
+    }
     
     setIsHistoryOpen(false); 
   };
@@ -121,12 +133,13 @@ export default function App() {
   };
 
 
-  const handleStartProduction = async (selectedChannels: string[]) => {
+  const handleStartProduction = async (selectedChannels: string[], advancedData: any) => {
     setIsLoading(true);
     setError(null);
     setResult(null);
-    setIsCopied(false);
     setStreamMessage("Connecting to Autonomous Content Factory...");
+
+    console.log("Sending Advanced Settings:", advancedData);
 
     try {
       const response = await fetch("http://127.0.0.1:8000/api/stream-campaign", {
@@ -135,7 +148,9 @@ export default function App() {
       body: JSON.stringify({ 
         source_material: sourceMaterial, 
         tone: tone,
-        channels: selectedChannels 
+        channels: selectedChannels,
+        advanced_settings: advancedData,
+        brand_voice: brandVoice // <-- NOW THE AI KNOWS YOUR BRAND RULES!
       }),
     });
 
@@ -166,7 +181,13 @@ export default function App() {
                 
                 if (user) {
                   await supabase.from('campaigns').insert([
-                    { user_id: user.id, source_material: sourceMaterial, tone: tone, campaign_markdown: parsedData.data.campaign_markdown }
+                    { 
+                      user_id: user.id, 
+                      source_material: sourceMaterial, 
+                      tone: tone, 
+                      // <-- FIXED: Safely stringify the dynamic JSON object to save to DB!
+                      campaign_markdown: JSON.stringify(parsedData.data) 
+                    }
                   ]);
                   fetchHistory(user.id);
                 }
@@ -187,29 +208,33 @@ export default function App() {
     }
   };
 
-  const handleRegenerate = async (formatType: string) => {
+  const handleRegenerate = async (tabKey: string) => {
     setIsLoading(true);
     setError(null);
-    setStreamMessage(`Regenerating ${formatType}...`);
+    setStreamMessage(`Initiating targeted regeneration for ${tabKey}...`);
 
     try {
       const response = await fetch("http://127.0.0.1:8000/api/stream-regenerate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source_material: sourceMaterial, tone: tone, format_type: formatType, brand_voice: brandVoice }),
+        body: JSON.stringify({
+          source_material: sourceMaterial,
+          tone: tone || "Professional & Trustworthy",
+          format_type: tabKey, 
+        }),
       });
 
-      if (!response.body) throw new Error("No readable stream available.");
+      if (!response.body) throw new Error("No response from server");
 
       const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
+      const decoder = new TextDecoder();
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { value, done } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        const lines = chunk.split("\n"); 
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
@@ -217,44 +242,31 @@ export default function App() {
             if (!jsonString) continue;
 
             try {
-              const parsedData = JSON.parse(jsonString);
+              const data = JSON.parse(jsonString);
 
-              if (parsedData.type === "update") {
-                setStreamMessage(parsedData.message);
-              } else if (parsedData.type === "complete") {
+              if (data.type === "update") {
+                setStreamMessage(`[${data.agent}] ${data.message}`);
+              } else if (data.type === "complete") {
                 
-                setResult((prev: any) => {
-                  const updated = { ...prev };
-                  if (formatType === 'blog') updated.blog_post = parsedData.data.content;
-                  if (formatType === 'twitter') updated.twitter_thread = parsedData.data.content;
-                  if (formatType === 'email') updated.email_teaser = parsedData.data.content;
-                  
-                  updated.campaign_markdown = `# Campaign Kit\n\n## Blog Post\n${updated.blog_post}\n\n---\n## Twitter Thread\n${updated.twitter_thread}\n\n---\n## Email Teaser\n${updated.email_teaser}`;
-                  
-                  return updated;
-                });
-
-                if (user) {
-                  await supabase.from('campaigns').insert([
-                    { user_id: user.id, source_material: sourceMaterial, tone: tone, campaign_markdown: parsedData.data.campaign_markdown || "" } 
-                  ]);
-                  fetchHistory(user.id);
-                }
-
-              } else if (parsedData.type === "error") {
-                setError(parsedData.message);
+                setResult((prev: any) => ({
+                  ...prev,
+                  [data.data.format_type]: data.data.content
+                }));
+                
+                setStreamMessage("Regeneration Complete!");
+                setIsLoading(false);
+              } else if (data.type === "error") {
+                throw new Error(data.message);
               }
             } catch (err) {
-              console.error("Failed to parse chunk:", jsonString, err);
+              console.error("Error parsing stream data:", jsonString, err);
             }
           }
         }
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during regeneration.");
-    } finally {
+      setError(err.message || "An error occurred");
       setIsLoading(false);
-      setStreamMessage(null);
     }
   };
 
@@ -296,7 +308,7 @@ export default function App() {
       <div className="absolute inset-0 z-0 h-full w-full bg-zinc-950 pointer-events-none flex justify-center">
         <div className="absolute inset-0 bg-[radial-gradient(#4f4f5640_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_60%,transparent_100%)]" />
         
-        <div className="absolute top-[-5%] w-[600px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />
+        {/*<div className="absolute top-[-5%] w-[600px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />/*/}
       </div>
 
       <div className="relative z-10 max-w-screen-2xl mx-auto p-4 sm:p-8">
@@ -324,26 +336,28 @@ export default function App() {
           </div>
         </div>
       </div>
+      {/* Brand Voice Overlay */}
       {isBrandVoiceOpen && (
         <>
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" onClick={() => setIsBrandVoiceOpen(false)} />
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-in fade-in duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]" 
+            onClick={() => setIsBrandVoiceOpen(false)} 
+          />
           <BrandVoiceModal 
-            brandVoice={brandVoice} 
-            setBrandVoice={setBrandVoice} 
-            onClose={() => setIsBrandVoiceOpen(false)} 
+            brandVoice={brandVoice} setBrandVoice={setBrandVoice} onClose={() => setIsBrandVoiceOpen(false)} 
           />
         </>
       )}
+
+      {/* History Overlay */}
       {isHistoryOpen && (
         <>
           <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-in fade-in duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]" 
             onClick={() => setIsHistoryOpen(false)}
           />
           <CampaignHistory 
-            history={history} 
-            onClose={() => setIsHistoryOpen(false)} 
-            onLoad={loadCampaignFromHistory} 
+            history={history} onClose={() => setIsHistoryOpen(false)} onLoad={loadCampaignFromHistory} 
           />
         </>
       )}

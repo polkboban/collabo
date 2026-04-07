@@ -1,13 +1,13 @@
-import { LogOut, LayoutDashboard, Clock, Settings } from "lucide-react"; 
+import { LogOut, FactoryIcon, Clock, Settings } from "lucide-react"; 
 
 export default function DashboardHeader({ handleSignOut, onOpenHistory, onOpenBrandVoice }: any) {
   return (
     <header className="flex items-center justify-between mb-8 border-b border-white/10 pb-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20 shadow-inner">
-          <LayoutDashboard className="w-6 h-6 text-blue-400" />
+        <div className="p-2 bg-indigo-500/20 rounded-xl border border-white shadow-inner">
+          <FactoryIcon className="w-6 h-6 text-white" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Collabo</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-white">Collabo</h1>
       </div>
       
       <div className="flex items-center gap-4">

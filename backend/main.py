@@ -35,10 +35,17 @@ class BrandVoice(BaseModel):
     target_audience: str = ""
     custom_rules: str = ""
 
+class AdvancedSettings(BaseModel):
+    creativity: int = 70
+    keywords: str = ""
+    ctaUrl: str = ""
+
 class CampaignRequest(BaseModel):
     source_material: str
     tone: str
     brand_voice: BrandVoice | None = None
+    channels: List[str] = ["Blog Post", "Twitter Thread", "Email Teaser"]
+    advanced_settings: AdvancedSettings | None = None 
 
 class FactSheet(BaseModel):
     core_features: List[str] = Field(description="Main product features extracted from the text")
@@ -56,7 +63,7 @@ class RegenerateRequest(BaseModel):
 class SingleAssetKit(BaseModel):
     content: str = Field(description="The finalized generated content in markdown format.")
 
-def get_llm():
+def get_llm(custom_temperature: float = 0.7):
     import os
     from dotenv import load_dotenv
     from crewai import LLM
@@ -67,30 +74,48 @@ def get_llm():
     if not groq_key:
         raise ValueError("GROQ_API_KEY is missing. Check your .env file!")
         
+    os.environ["GROQ_API_KEY"] = groq_key
+        
     return LLM(
         model="groq/llama-3.1-8b-instant",
-        api_key=groq_key
+        api_key=groq_key,
+        temperature=custom_temperature 
     )
 
 def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
     try:
-        llm = get_llm()
-        
+        # 1. Convert the 0-100 Creativity slider into a 0.0-1.0 Temperature
+        temp = 0.7
+        if request.advanced_settings:
+            temp = request.advanced_settings.creativity / 100.0
+            
+        llm = get_llm(custom_temperature=temp) # <-- Pass it into the LLM!
+
+        from pydantic import create_model
+        requested_channels_str = ", ".join(request.channels)
+        dynamic_fields = {
+            channel.lower().replace(" ", "_").replace("-", "_"): (str, ...) 
+            for channel in request.channels
+        }
+        DynamicCampaignKit = create_model('DynamicCampaignKit', **dynamic_fields)
+
         def create_callback(agent_name):
             def callback(step_output):
                 message_queue.put({"type": "update", "agent": agent_name, "message": f"{agent_name} is processing data..."})
             return callback
 
-        scrape_tool = ScrapeWebsiteTool()
+        is_url = request.source_material.strip().startswith("http") or "www." in request.source_material
+        research_tools = [ScrapeWebsiteTool()] if is_url else []
 
         researcher = Agent(
             role="Lead Research and Fact-Checker",
-            goal="Extract the absolute truth and core value propositions from raw source material or website URLs.",
-            backstory="You are a meticulous researcher. If given a URL, you use your web scraping tool to read it. If given raw text, you analyze it directly.",
+            goal="Extract the absolute truth and core value propositions from raw source material.",
+            backstory="You are a meticulous researcher.",
             allow_delegation=False,
-            tools=[scrape_tool], 
-            llm=my_llm
+            tools=research_tools, 
+            llm=llm  
         )
+        
         copywriter = Agent(
             role='Senior Creative Copywriter',
             goal='Transform structured fact-sheets into engaging marketing copy.',
@@ -107,34 +132,40 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
             step_callback=create_callback("Editor")
         )
 
+        if is_url:
+            research_desc = f"Use your ScrapeWebsiteTool to read this exact URL: '{request.source_material}'. You MUST pass this URL as the 'website_url' parameter. After reading it, extract features, specs, audience, and the main value proposition."
+        else:
+            research_desc = f"Analyze this text: '{request.source_material}'. Extract features, specs, audience, and the main value proposition."
+
         t1_research = Task(
-            description=(
-                f"Analyze this source material: '{request.source_material}'.\n"
-                "If the source material is a URL, use your ScrapeWebsiteTool to read the contents of the page first.\n"
-                "Extract features, specs, audience, and the main value proposition. Flag any vague statements."
-            ),
+            description=research_desc,
             expected_output="A structured Fact-Sheet containing core_features, technical_specs, target_audience, and value_proposition.",
             agent=researcher
         )
-        
-        brand_context = ""
-        if request.brand_voice and request.brand_voice.company_name:
-            brand_context = (
-                f"\n\nCRITICAL BRAND GUIDELINES:\n"
-                f"- Company Name: {request.brand_voice.company_name}\n"
-                f"- Target Audience: {request.brand_voice.target_audience}\n"
-                f"- Mandatory Rules: {request.brand_voice.custom_rules}\n"
-                f"You MUST adhere to these rules strictly."
-            )
+
+        # --- 2. BUILD THE ADVANCED INSTRUCTIONS FOR THE COPYWRITER ---
+        advanced_instructions = ""
+        if request.advanced_settings:
+            if request.advanced_settings.keywords:
+                advanced_instructions += f"\n- MANDATORY KEYWORDS: You MUST naturally weave these exact keywords into the copy: {request.advanced_settings.keywords}"
+            if request.advanced_settings.ctaUrl:
+                advanced_instructions += f"\n- CALL TO ACTION: You MUST conclude the copy by urging the user to click this link: {request.advanced_settings.ctaUrl}"
+        # -------------------------------------------------------------
 
         t2_copy = Task(
             description=(
                 "Read the Fact-Sheet provided by the Researcher.\n"
                 "CRITICAL INSTRUCTION: Before you write the copy, you must open a <thinking> block.\n"
                 "Inside the <thinking> block, write out your strategy: What is the core emotion? Who is the audience? What hook will work best?\n"
-                "After you close the </thinking> block, write the final Blog Post, Twitter Thread, and Email Teaser."
+                f"After you close the </thinking> block, write the final copy for these exact channels: {requested_channels_str}.\n"
+                f"{advanced_instructions}\n\n" # <-- Inject the new instructions here!
+                "CRITICAL FORMATTING RULES FOR YOUR FINAL OUTPUT:\n"
+                "1. Use generous spacing. ALWAYS put double line breaks (\\n\\n) between paragraphs.\n"
+                "2. Use Markdown Headers (## and ###) to separate different sections.\n"
+                "3. Use **bold text** heavily to emphasize key features, metrics, and important buzzwords.\n"
+                "4. Use bullet points (-) whenever listing features or benefits to make it easy to read."
             ),
-            expected_output='Markdown document with the requested content.',
+            expected_output=f'Highly formatted Markdown document with drafts for: {requested_channels_str}.',
             agent=copywriter,
             context=[t1_research]
         )
@@ -142,13 +173,13 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
         t3_edit = Task(
             description=("Compare the Copywriter's drafts against the original Fact-Sheet.\n"
                          "Hallucination Check: If the Copywriter invented ANY features or specs not in the Fact-Sheet, reject it and rewrite it accurately.\n"
-                         f"Tone Audit: Ensure the language matches the '{request.tone}' tone."),
+                         f"Tone Audit: Ensure the language matches the '{request.tone}' tone.\n"
+                         f"Format Requirement: You MUST format the output to include exactly these formats: {requested_channels_str}."),
             expected_output="The final, polished marketing assets.",
             agent=editor,
             context=[t1_research, t2_copy],
-            output_json=CampaignKit 
+            output_json=DynamicCampaignKit 
         )
-        my_llm = get_llm()
 
         crew = Crew(
             agents=[researcher, copywriter, editor],
@@ -168,12 +199,12 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
             raw_text = result.raw.replace("```json", "").replace("```", "").strip()
             output_data = json.loads(raw_text, strict=False)
 
-        print(f"\n SUCCESS! Sending these keys to the frontend: {output_data.keys()}\n")
+        print(f"\n🚀 SUCCESS! Sending these keys to the frontend: {output_data.keys()}\n")
         
         message_queue.put({"type": "complete", "data": output_data})
 
     except Exception as e:
-        print(f"\n CRITICAL CRASH: {str(e)}\n")
+        print(f"\n❌ CRITICAL CRASH: {str(e)}\n")
         message_queue.put({"type": "error", "message": f"Pipeline Error: {str(e)}"})
 
 @app.post("/api/stream-campaign")
@@ -210,11 +241,15 @@ def run_single_regeneration(request: RegenerateRequest, message_queue: Queue):
                 message_queue.put({"type": "update", "agent": agent_name, "message": f"{agent_name} is refining the {request.format_type}..."})
             return callback
 
+        # --- SMART TOOL LOGIC (Added to Regeneration) ---
+        is_url = request.source_material.strip().startswith("http") or "www." in request.source_material
+        research_tools = [ScrapeWebsiteTool()] if is_url else []
+
         researcher = Agent(
             role='Lead Research and Fact-Checker',
             goal='Extract the absolute truth and core value propositions from raw source material.',
             backstory='You are a highly analytical, meticulous researcher. You never invent information. If something is unclear, you flag it.',
-            verbose=True, allow_delegation=False, llm=llm, step_callback=create_callback("Researcher")
+            verbose=True, allow_delegation=False, tools=research_tools, llm=llm, step_callback=create_callback("Researcher")
         )
         copywriter = Agent(
             role='Senior Creative Copywriter',
@@ -229,37 +264,51 @@ def run_single_regeneration(request: RegenerateRequest, message_queue: Queue):
             verbose=True, allow_delegation=False, llm=llm, step_callback=create_callback("Editor")
         )
 
-        format_map = {
-            "blog": "A 500-word Blog Post",
-            "twitter": "A 5-post Twitter (X) Thread",
-            "email": "A 1-paragraph Email Teaser"
-        }
-        target_format = format_map.get(request.format_type, "content")
+        pretty_format = request.format_type.replace("_", " ").title()
+
+        if is_url:
+            research_desc = f"Use your ScrapeWebsiteTool to read this exact URL: '{request.source_material}'. You MUST pass this URL as the 'website_url' parameter. After reading it, extract features, specs, audience, and the main value proposition."
+        else:
+            research_desc = f"Analyze this text: '{request.source_material}'. Extract features, specs, audience, and the main value proposition."
 
         t1_research = Task(
-            description=f'Analyze this text: "{request.source_material}". Extract features, specs, audience, and the main value proposition.',
-            expected_output='A strict JSON object containing EXACTLY these keys: "core_features" (list), "technical_specs" (list), "target_audience" (string), "value_proposition" (string), "ambiguous_statements" (list). Do not output any other text.',
+            description=research_desc,
+            expected_output='A strict Fact-Sheet with core features and value propositions.',
             agent=researcher
         )
 
         t2_copy = Task(
-            description=(f"Using ONLY the Fact-Sheet provided, generate {target_format}. "
-                         f"Tone Requirement: You must write in a '{request.tone}' style."),
-            expected_output='Markdown document with the requested content.',
+            description=(f"Using ONLY the Fact-Sheet provided, generate a {pretty_format}. "
+                         f"Tone Requirement: You must write in a '{request.tone}' style.\n\n"
+                         "CRITICAL FORMATTING RULES:\n"
+                         "1. ALWAYS put double line breaks (\\n\\n) between paragraphs.\n"
+                         "2. Use Markdown Headers (## and ###).\n"
+                         "3. Use **bold text** heavily.\n"
+                         "4. Use bullet points (-) for features."),
+            expected_output='Highly formatted Markdown document.',
             agent=copywriter, context=[t1_research]
         )
 
         t3_edit = Task(
             description=("Compare the Copywriter's draft against the original Fact-Sheet for hallucinations. "
-                         f"Tone Audit: Ensure the language matches the '{request.tone}' tone. Output the final asset perfectly."),
-            expected_output='A strict JSON object containing EXACTLY this key: "content". The value should be the polished markdown string. Do not output any other text.',
+                         f"Ensure the language matches the '{request.tone}' tone.\n"
+                         "CRITICAL: You must return the final polished markdown string inside a valid JSON object."),
+            expected_output='A strict JSON object containing EXACTLY this key: "content". The value is the markdown string.',
             agent=editor,
-            context=[t1_research, t2_copy]
+            context=[t1_research, t2_copy],
+            output_json=SingleAssetKit 
         )
 
-        crew = Crew(agents=[researcher, copywriter, editor], tasks=[t1_research, t2_copy, t3_edit], process=Process.sequential)
+        crew = Crew(
+            agents=[researcher, copywriter, editor], 
+            tasks=[t1_research, t2_copy, t3_edit], 
+            process=Process.sequential,
+            verbose=True,
+            planning=False, # <-- Forces CrewAI to not use OpenAI
+            function_calling_llm=llm # <-- Forces utility tasks to use Groq
+        )
         
-        message_queue.put({"type": "update", "agent": "System", "message": f"Starting focused regeneration for {request.format_type}..."})
+        message_queue.put({"type": "update", "agent": "System", "message": f"Starting focused regeneration for {pretty_format}..."})
         result = crew.kickoff()
         
         output_data = result.json_dict
@@ -268,13 +317,10 @@ def run_single_regeneration(request: RegenerateRequest, message_queue: Queue):
             raw_text = result.raw.replace("```json", "").replace("```", "").strip()
             output_data = json.loads(raw_text, strict=False)
 
-        if "content" in output_data and isinstance(output_data["content"], list):
-            output_data["content"] = "\n\n".join(str(item) for item in output_data["content"])
-
         message_queue.put({"type": "complete", "data": {"format_type": request.format_type, "content": output_data.get("content", "")}})
 
     except Exception as e:
-        message_queue.put({"type": "error", "message": str(e)})
+        message_queue.put({"type": "error", "message": f"Pipeline Error: {str(e)}"})
 
 @app.post("/api/stream-regenerate")
 async def stream_regenerate(request: RegenerateRequest):
