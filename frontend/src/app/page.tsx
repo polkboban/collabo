@@ -86,11 +86,9 @@ export default function App() {
     }
 
     try {
-      // Try to parse the new dynamic JSON format!
       const parsedResult = JSON.parse(campaign.campaign_markdown);
       setResult(parsedResult);
     } catch (e) {
-      // Fallback for your older hardcoded campaigns before the upgrade
       const md = campaign.campaign_markdown;
       const parts = md.split('---');
       
@@ -142,7 +140,7 @@ export default function App() {
     console.log("Sending Advanced Settings:", advancedData);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/stream-campaign", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/stream-campaign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
@@ -150,7 +148,7 @@ export default function App() {
         tone: tone,
         channels: selectedChannels,
         advanced_settings: advancedData,
-        brand_voice: brandVoice // <-- NOW THE AI KNOWS YOUR BRAND RULES!
+        brand_voice: brandVoice 
       }),
     });
 
@@ -159,12 +157,18 @@ export default function App() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
+      let buffer = "";
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        buffer += decoder.decode(value, { stream: true });
+        
+        const lines = buffer.split("\n");
+        
+       
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
@@ -173,23 +177,29 @@ export default function App() {
 
             try {
               const parsedData = JSON.parse(jsonString);
-
+              
               if (parsedData.type === "update") {
                 setStreamMessage(parsedData.message);
               } else if (parsedData.type === "complete") {
                 setResult(parsedData.data);
                 
                 if (user) {
-                  await supabase.from('campaigns').insert([
+                  const { data: insertedData, error: insertError } = await supabase.from('campaigns').insert([
                     { 
                       user_id: user.id, 
                       source_material: sourceMaterial, 
                       tone: tone, 
-                      // <-- FIXED: Safely stringify the dynamic JSON object to save to DB!
                       campaign_markdown: JSON.stringify(parsedData.data) 
                     }
-                  ]);
-                  fetchHistory(user.id);
+                  ]).select(); 
+
+                  if (insertError) {
+                    console.error("Supabase Insert Failed:", insertError);
+                    setError(`Database Error: ${insertError.message}`);
+                  } else {
+                    console.log("Successfully saved campaign to history!", insertedData);
+                    fetchHistory(user.id);
+                  }
                 }
               } else if (parsedData.type === "error") {
                 setError(parsedData.message);
@@ -214,13 +224,14 @@ export default function App() {
     setStreamMessage(`Initiating targeted regeneration for ${tabKey}...`);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/stream-regenerate", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/stream-regenerate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           source_material: sourceMaterial,
           tone: tone || "Professional & Trustworthy",
-          format_type: tabKey, 
+          format_type: tabKey,
+          brand_voice: brandVoice, 
         }),
       });
 
@@ -336,7 +347,6 @@ export default function App() {
           </div>
         </div>
       </div>
-      {/* Brand Voice Overlay */}
       {isBrandVoiceOpen && (
         <>
           <div 
@@ -349,7 +359,6 @@ export default function App() {
         </>
       )}
 
-      {/* History Overlay */}
       {isHistoryOpen && (
         <>
           <div 

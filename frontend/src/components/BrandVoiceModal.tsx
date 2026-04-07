@@ -10,7 +10,6 @@ export default function BrandVoiceModal({ brandVoice, setBrandVoice, onClose }: 
   return (
     <div className="fixed top-0 right-0 h-full w-full sm:w-[450px] bg-zinc-950 border-l border-white/5 z-50 shadow-[-30px_0_60px_-15px_rgba(0,0,0,0.6)] animate-in slide-in-from-right-full duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col">
       
-      {/* Sticky Header */}
       <div className="flex items-center justify-between p-6 border-b border-white/5 shrink-0 bg-zinc-950/80 backdrop-blur-xl">
         <h2 className="text-xl font-bold text-white flex items-center gap-2 tracking-tight">
           <div className="p-2 bg-indigo-500/10 rounded-lg">
@@ -26,7 +25,6 @@ export default function BrandVoiceModal({ brandVoice, setBrandVoice, onClose }: 
         </button>
       </div>
 
-      {/* Scrollable Content */}
       <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
         <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-start gap-3">
           <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
@@ -68,7 +66,6 @@ export default function BrandVoiceModal({ brandVoice, setBrandVoice, onClose }: 
         </div>
       </div>
 
-      {/* Sticky Footer */}
       <div className="p-6 border-t border-white/5 bg-zinc-950 shrink-0">
         <button
           onClick={handleSave}

@@ -1,4 +1,4 @@
-import { Factory, Loader2 } from "lucide-react";
+import { CircleGauge, Loader2 } from "lucide-react";
 
 export default function AuthScreen({
   email, setEmail, password, setPassword, isLoginMode, setIsLoginMode,
@@ -13,9 +13,9 @@ export default function AuthScreen({
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl shadow-lg">
-              <Factory className="w-8 h-8 text-blue-400" />
+              <CircleGauge className="w-8 h-8 text-blue-400" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Collabo</h1>
+            <h1 className="text-5xl font-bold tracking-tight text-blue-400">Collabo</h1>
           </div>
           <h2 className="text-5xl font-extrabold tracking-tight mb-6 leading-tight text-white">
             Scale your marketing <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">with autonomous AI.</span>
@@ -30,7 +30,7 @@ export default function AuthScreen({
         <div className="max-w-md w-full relative z-10">
           <div className="flex justify-center lg:hidden mb-8">
             <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl shadow-lg">
-              <Factory className="w-8 h-8 text-blue-400" />
+              <CircleGauge className="w-8 h-8 text-blue-400" />
             </div>
           </div>
           

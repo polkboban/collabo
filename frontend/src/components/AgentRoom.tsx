@@ -51,17 +51,14 @@ export default function AgentRoom({
     URL.revokeObjectURL(url);
   };
 
-  // --- NEW: Dynamic Content Editor Logic ---
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!activeTabKey) return;
     
-    // Dynamically update the specific key in the result object
     setResult((prev: any) => ({
       ...prev,
       [activeTabKey]: e.target.value
     }));
   };
-  // -----------------------------------------
 
   return (
     <div className="bg-zinc-900/40 p-2 sm:p-6 rounded-3xl shadow-2xl border border-white/5 backdrop-blur-xl flex flex-col h-full ring-1 ring-white/10">
@@ -153,7 +150,6 @@ export default function AgentRoom({
             {result && activeTabKey && result[activeTabKey] && (
               <div className="relative h-full flex flex-col">
                 
-                {/* --- SMART CONDITIONAL RENDERING --- */}
                 {isEditing ? (
                   <textarea
                     className="flex-1 w-full p-8 bg-zinc-950/80 text-zinc-300 font-mono text-sm leading-relaxed resize-none focus:outline-none custom-scrollbar"

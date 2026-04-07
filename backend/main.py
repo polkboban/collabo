@@ -84,12 +84,11 @@ def get_llm(custom_temperature: float = 0.7):
 
 def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
     try:
-        # 1. Convert the 0-100 Creativity slider into a 0.0-1.0 Temperature
         temp = 0.7
         if request.advanced_settings:
             temp = request.advanced_settings.creativity / 100.0
             
-        llm = get_llm(custom_temperature=temp) # <-- Pass it into the LLM!
+        llm = get_llm(custom_temperature=temp) 
 
         from pydantic import create_model
         requested_channels_str = ", ".join(request.channels)
@@ -143,14 +142,23 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
             agent=researcher
         )
 
-        # --- 2. BUILD THE ADVANCED INSTRUCTIONS FOR THE COPYWRITER ---
         advanced_instructions = ""
+        
+        if request.brand_voice:
+            advanced_instructions += "\n\n--- BRAND VOICE & IDENTITY ---"
+            if request.brand_voice.company_name:
+                advanced_instructions += f"\n- COMPANY NAME: {request.brand_voice.company_name}"
+            if request.brand_voice.target_audience:
+                advanced_instructions += f"\n- TARGET AUDIENCE: {request.brand_voice.target_audience}"
+            if request.brand_voice.custom_rules:
+                advanced_instructions += f"\n- STRICT BRAND RULES: {request.brand_voice.custom_rules}"
+            advanced_instructions += "\n------------------------------\n"
+
         if request.advanced_settings:
             if request.advanced_settings.keywords:
                 advanced_instructions += f"\n- MANDATORY KEYWORDS: You MUST naturally weave these exact keywords into the copy: {request.advanced_settings.keywords}"
             if request.advanced_settings.ctaUrl:
                 advanced_instructions += f"\n- CALL TO ACTION: You MUST conclude the copy by urging the user to click this link: {request.advanced_settings.ctaUrl}"
-        # -------------------------------------------------------------
 
         t2_copy = Task(
             description=(
@@ -158,7 +166,7 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
                 "CRITICAL INSTRUCTION: Before you write the copy, you must open a <thinking> block.\n"
                 "Inside the <thinking> block, write out your strategy: What is the core emotion? Who is the audience? What hook will work best?\n"
                 f"After you close the </thinking> block, write the final copy for these exact channels: {requested_channels_str}.\n"
-                f"{advanced_instructions}\n\n" # <-- Inject the new instructions here!
+                f"{advanced_instructions}\n\n" 
                 "CRITICAL FORMATTING RULES FOR YOUR FINAL OUTPUT:\n"
                 "1. Use generous spacing. ALWAYS put double line breaks (\\n\\n) between paragraphs.\n"
                 "2. Use Markdown Headers (## and ###) to separate different sections.\n"
@@ -199,12 +207,12 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
             raw_text = result.raw.replace("```json", "").replace("```", "").strip()
             output_data = json.loads(raw_text, strict=False)
 
-        print(f"\n🚀 SUCCESS! Sending these keys to the frontend: {output_data.keys()}\n")
+        print(f"\n SUCCESS! Sending these keys to the frontend: {output_data.keys()}\n")
         
         message_queue.put({"type": "complete", "data": output_data})
 
     except Exception as e:
-        print(f"\n❌ CRITICAL CRASH: {str(e)}\n")
+        print(f"\n CRITICAL CRASH: {str(e)}\n")
         message_queue.put({"type": "error", "message": f"Pipeline Error: {str(e)}"})
 
 @app.post("/api/stream-campaign")
@@ -241,7 +249,6 @@ def run_single_regeneration(request: RegenerateRequest, message_queue: Queue):
                 message_queue.put({"type": "update", "agent": agent_name, "message": f"{agent_name} is refining the {request.format_type}..."})
             return callback
 
-        # --- SMART TOOL LOGIC (Added to Regeneration) ---
         is_url = request.source_material.strip().startswith("http") or "www." in request.source_material
         research_tools = [ScrapeWebsiteTool()] if is_url else []
 
@@ -277,9 +284,20 @@ def run_single_regeneration(request: RegenerateRequest, message_queue: Queue):
             agent=researcher
         )
 
+        brand_instructions = ""
+        if request.brand_voice:
+            brand_instructions = "\n\n--- BRAND VOICE & IDENTITY ---"
+            if request.brand_voice.company_name:
+                brand_instructions += f"\n- COMPANY NAME: {request.brand_voice.company_name}"
+            if request.brand_voice.target_audience:
+                brand_instructions += f"\n- TARGET AUDIENCE: {request.brand_voice.target_audience}"
+            if request.brand_voice.custom_rules:
+                brand_instructions += f"\n- STRICT BRAND RULES: {request.brand_voice.custom_rules}"
+
         t2_copy = Task(
             description=(f"Using ONLY the Fact-Sheet provided, generate a {pretty_format}. "
-                         f"Tone Requirement: You must write in a '{request.tone}' style.\n\n"
+                         f"Tone Requirement: You must write in a '{request.tone}' style.\n"
+                         f"{brand_instructions}\n\n" 
                          "CRITICAL FORMATTING RULES:\n"
                          "1. ALWAYS put double line breaks (\\n\\n) between paragraphs.\n"
                          "2. Use Markdown Headers (## and ###).\n"
@@ -304,8 +322,8 @@ def run_single_regeneration(request: RegenerateRequest, message_queue: Queue):
             tasks=[t1_research, t2_copy, t3_edit], 
             process=Process.sequential,
             verbose=True,
-            planning=False, # <-- Forces CrewAI to not use OpenAI
-            function_calling_llm=llm # <-- Forces utility tasks to use Groq
+            planning=False, 
+            function_calling_llm=llm 
         )
         
         message_queue.put({"type": "update", "agent": "System", "message": f"Starting focused regeneration for {pretty_format}..."})

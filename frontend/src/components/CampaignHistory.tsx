@@ -4,7 +4,6 @@ export default function CampaignHistory({ history, onClose, onLoad }: any) {
   return (
     <div className="fixed top-0 right-0 h-full w-full sm:w-[450px] bg-zinc-950 border-l border-white/5 z-50 shadow-[-30px_0_60px_-15px_rgba(0,0,0,0.6)] animate-in slide-in-from-right-full duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col">
       
-      {/* Sticky Header */}
       <div className="flex items-center justify-between p-6 border-b border-white/5 shrink-0 bg-zinc-950/80 backdrop-blur-xl">
         <h2 className="text-xl font-bold text-white flex items-center gap-2 tracking-tight">
           <div className="p-2 bg-indigo-500/10 rounded-lg">
@@ -20,7 +19,6 @@ export default function CampaignHistory({ history, onClose, onLoad }: any) {
         </button>
       </div>
 
-      {/* Scrollable Content */}
       <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
         {history.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-zinc-500">

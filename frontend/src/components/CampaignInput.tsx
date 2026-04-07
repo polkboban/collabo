@@ -12,12 +12,10 @@ export default function CampaignInput({
     "Blog Post", "Twitter Thread", "Email Teaser"
   ]);
 
-  // --- NEW ADVANCED SETTINGS STATE ---
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [creativity, setCreativity] = useState(70);
   const [keywords, setKeywords] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
-  // -----------------------------------
 
   const toggleChannel = (channel: string) => {
     setSelectedChannels((prev) => 
@@ -125,7 +123,6 @@ export default function CampaignInput({
         </div>
       </div>
 
-      {/* --- ADVANCED SETTINGS TRIGGER --- */}
       <div className="mb-8">
         <button
           type="button"
@@ -136,16 +133,13 @@ export default function CampaignInput({
           Configure Advanced Settings
         </button>
 
-        {/* --- THE NEW CENTERED MODAL --- */}
         {showAdvanced && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            {/* Blurred Backdrop */}
             <div 
               className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" 
               onClick={() => setShowAdvanced(false)} 
             />
             
-            {/* Modal Content container */}
             <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-3xl p-6 md:p-8 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
               
               <div className="flex justify-between items-center mb-6">
@@ -213,9 +207,7 @@ export default function CampaignInput({
           </div>
         )}
       </div>
-      {/* -------------------------------------- */}
       <button
-        // WE NOW PASS THE ADVANCED SETTINGS OBJECT UP TO THE PARENT
         onClick={() => handleStartProduction(selectedChannels, { creativity, keywords, ctaUrl })}
         disabled={isLoading || !sourceMaterial || selectedChannels.length === 0}
         className="relative w-full py-4 px-4 bg-zinc-100 text-zinc-900 font-bold rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-[0_0_25px_-5px_rgba(255,255,255,0.4)]"
