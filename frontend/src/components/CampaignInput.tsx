@@ -43,7 +43,7 @@ export default function CampaignInput({
   }, []);
 
   return (
-    <div className="bg-zinc-900/40 p-6 rounded-3xl border border-white/5 backdrop-blur-xl shadow-2xl transition-all hover:border-white/10 group">
+    <div className="relative bg-zinc-900/40 p-2 sm:p-6 rounded-3xl shadow-2xl border border-white/5 backdrop-blur-xl flex flex-col h-full ring-1 ring-white/10 group">
       <h2 className="text-lg font-medium mb-6 flex items-center gap-3 text-white">
         <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-400 group-hover:scale-110 transition-transform">
           <Layers className="w-4 h-4" />
@@ -53,7 +53,7 @@ export default function CampaignInput({
       
       <div className="relative mb-6 group/textarea">
         <textarea
-          className="w-full h-56 p-4 border border-zinc-800 rounded-2xl bg-zinc-950/50 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all text-zinc-300 placeholder:text-zinc-600 resize-none shadow-inner custom-scrollbar"
+          className="w-full h-36 p-4 border border-zinc-800 rounded-2xl bg-zinc-950/50 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all text-zinc-300 placeholder:text-zinc-600 resize-none shadow-inner custom-scrollbar"
           value={sourceMaterial} onChange={(e) => setSourceMaterial(e.target.value)}
           placeholder="Paste your product notes, transcripts, or raw ideas here..."
         />
@@ -227,6 +227,7 @@ export default function CampaignInput({
           <p>{error}</p>
         </div>
       )}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-indigo-500 group-hover:w-1/2 transition-all duration-500 opacity-0 group-hover:opacity-100 rounded-full" />
     </div>
   );
 }

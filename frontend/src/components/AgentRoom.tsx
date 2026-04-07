@@ -61,7 +61,7 @@ export default function AgentRoom({
   };
 
   return (
-    <div className="bg-zinc-900/40 p-2 sm:p-6 rounded-3xl shadow-2xl border border-white/5 backdrop-blur-xl flex flex-col h-full ring-1 ring-white/10">
+    <div className="relative bg-zinc-900/40 p-2 sm:p-6 rounded-3xl shadow-2xl border border-white/5 backdrop-blur-xl flex flex-col h-full ring-1 ring-white/10 group">
       
       {!isLoading && !result && (
         <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 animate-in fade-in duration-700">
@@ -185,6 +185,7 @@ export default function AgentRoom({
 
         </div>
       )}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-indigo-500 group-hover:w-1/2 transition-all duration-500 opacity-0 group-hover:opacity-100 rounded-full" />
     </div>
   );
 }
