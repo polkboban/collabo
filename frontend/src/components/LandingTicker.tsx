@@ -15,7 +15,6 @@ export default function LandingTicker() {
       <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-zinc-950 to-transparent z-10" />
 
       <div className="flex w-[200%] animate-marquee">
-        {/* We map the array twice to create a seamless infinite loop */}
         {[...AGENTS, ...AGENTS].map((agent, i) => (
           <div key={i} className="flex items-center gap-4 px-8 whitespace-nowrap">
             <Sparkles className="w-4 h-4 text-indigo-500/50" />

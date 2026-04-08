@@ -111,7 +111,7 @@ def get_llm(custom_temperature: float = 0.7):
     os.environ["GROQ_API_KEY"] = groq_key
         
     return LLM(
-        model="groq/llama-3.1-8b-instant",
+        model="groq/llama3-70b-8192", 
         api_key=groq_key,
         temperature=custom_temperature 
     )
@@ -146,7 +146,8 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
             backstory="You are a meticulous researcher.",
             allow_delegation=False,
             tools=research_tools, 
-            llm=llm  
+            llm=llm,
+            max_iter=3,  
         )
         
         copywriter = Agent(
@@ -154,6 +155,7 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
             goal='Transform structured fact-sheets into engaging marketing copy.',
             backstory='You are a master storyteller. You strictly use the facts provided by the Research team.',
             verbose=True, allow_delegation=False, llm=llm,
+            max_iter=3,
             step_callback=create_callback("Copywriter")
         )
         
@@ -162,6 +164,7 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
             goal='Audit content for accuracy, tone, and hallucinations before final publication.',
             backstory='You are a ruthless editor. You cross-reference claims against the fact-sheet and ensure the requested tone is met.',
             verbose=True, allow_delegation=False, llm=llm,
+            max_iter=3,
             step_callback=create_callback("Editor")
         )
 
@@ -227,7 +230,8 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
             agents=[researcher, copywriter, editor],
             tasks=[t1_research, t2_copy, t3_edit],
             verbose=True,
-            planning=False 
+            planning=False,
+            max_rpm=7
         )
 
         message_queue.put({"type": "update", "agent": "System", "message": "Starting the campaign generation pipeline..."})
@@ -261,13 +265,9 @@ async def stream_campaign(request: CampaignRequest, user: dict = Depends(verify_
             if not message_queue.empty():
                 msg = message_queue.get()
                 
-                if msg["type"] == "error":
-                    yield json.dumps({"error": msg["message"]})
-                    break
-                    
                 yield json.dumps(msg)
                 
-                if msg["type"] == "complete":
+                if msg["type"] in ["complete", "error"]:
                     break
             else:
                 await asyncio.sleep(0.5)
@@ -357,7 +357,8 @@ def run_single_regeneration(request: RegenerateRequest, message_queue: Queue):
             process=Process.sequential,
             verbose=True,
             planning=False, 
-            function_calling_llm=llm 
+            function_calling_llm=llm,
+            max_rpm=7
         )
         
         message_queue.put({"type": "update", "agent": "System", "message": f"Starting focused regeneration for {pretty_format}..."})

@@ -2,8 +2,10 @@
 
 import { motion } from "framer-motion";
 import { ArrowDown, Sparkles, Cpu, Wand2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function LandingHero() {
+  const router = useRouter();
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 sm:px-6 lg:px-8">
       
@@ -28,7 +30,6 @@ export default function LandingHero() {
         className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-purple-600/20 blur-[150px] rounded-full pointer-events-none" 
       />
 
-      {/* Floating Agent Nodes */}
       <motion.div animate={{ y: [0, -20, 0] }} transition={{ duration: 4, repeat: Infinity }} className="absolute top-32 left-[15%] p-4 bg-zinc-900/50 border border-indigo-500/30 rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(99,102,241,0.15)] hidden md:block">
         <Cpu className="w-6 h-6 text-indigo-400" />
       </motion.div>
@@ -36,7 +37,6 @@ export default function LandingHero() {
         <Wand2 className="w-6 h-6 text-purple-400" />
       </motion.div>
 
-      {/* "Pull to Relaunch" Mimic */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -47,7 +47,6 @@ export default function LandingHero() {
         <span>Initialize Swarm</span>
       </motion.div>
 
-      {/* Main Copy */}
       <div className="relative z-10 max-w-4xl mx-auto text-center mt-20">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -81,21 +80,22 @@ export default function LandingHero() {
         </motion.p>
       </div>
 
-      {/* Big Action Button */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.4 }}
         className="mt-16 z-10"
       >
-        <button className="group relative px-8 py-4 bg-zinc-100 text-zinc-950 rounded-full font-bold text-lg tracking-wide hover:scale-105 transition-all duration-300 overflow-hidden shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_60px_rgba(99,102,241,0.4)]">
+        <button 
+          onClick={() => router.push('/dashboard')} 
+          className="group relative px-8 py-4 bg-zinc-100 text-zinc-950 rounded-full font-bold text-lg tracking-wide hover:scale-105 transition-all duration-300 overflow-hidden shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_60px_rgba(99,102,241,0.4)]"
+        >
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 opacity-0 transition-opacity duration-500 group-hover:opacity-20" />
           Start Production
         </button>
       </motion.div>
       
-      {/* Fade out to black at the bottom */}
-      <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t from-zinc-950 to-transparent z-20" />
+      <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t from-zinc-950 to-transparent z-20 pointer-events-none" />
     </div>
   );
 }

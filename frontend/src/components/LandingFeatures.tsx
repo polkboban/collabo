@@ -5,7 +5,7 @@ import { LayoutGrid, SlidersHorizontal, Sparkles, Terminal, FileText, X, Mail } 
 
 export default function LandingFeatures() {
   return (
-    <section className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 z-30">
+    <section className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 z-30">
       
       {/* Background glow for the whole section */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/5 blur-[150px] rounded-full pointer-events-none" />
