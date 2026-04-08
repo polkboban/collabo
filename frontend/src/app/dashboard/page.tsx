@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { supabase } from "../lib/supabase";
-/*
-import AuthScreen from "../components/AuthScreen";
-import DashboardHeader from "../components/DashboardHeader";
-import CampaignInput from "../components/CampaignInput";
-import AgentRoom from "../components/AgentRoom";
-import CampaignHistory from "../components/CampaignHistory";
-import BrandVoiceModal from "../components/BrandVoiceModal";
+import { supabase } from "@/lib/supabase";
+import AuthScreen from "@/components/AuthScreen";
+import DashboardHeader from "@/components/DashboardHeader";
+import CampaignInput from "@/components/CampaignInput";
+import AgentRoom from "@/components/AgentRoom";
+import CampaignHistory from "@/components/CampaignHistory";
+import BrandVoiceModal from "@/components/BrandVoiceModal";
 import LandingHero from "@/components/LandingHero";
 
 export default function App() {
@@ -117,7 +116,6 @@ export default function App() {
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        alert("Check your email for the confirmation link!");
       }
     } catch (err: any) {
       setAuthError(err.message);
@@ -138,20 +136,27 @@ export default function App() {
     setResult(null);
     setStreamMessage("Connecting to Autonomous Content Factory...");
 
-    console.log("Sending Advanced Settings:", advancedData);
-
     try {
+      // 1. Get the active session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) throw new Error("Authentication error: Please log in again.");
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/stream-campaign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        source_material: sourceMaterial, 
-        tone: tone,
-        channels: selectedChannels,
-        advanced_settings: advancedData,
-        brand_voice: brandVoice 
-      }),
-    });
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 2. Add the token here
+        },
+        body: JSON.stringify({ 
+          source_material: sourceMaterial, 
+          tone: tone,
+          channels: selectedChannels,
+          advanced_settings: advancedData,
+          brand_voice: brandVoice 
+        }),
+      });
 
       if (!response.body) throw new Error("No readable stream available.");
 
@@ -225,9 +230,18 @@ export default function App() {
     setStreamMessage(`Initiating targeted regeneration for ${tabKey}...`);
 
     try {
+      // 1. Get the active session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) throw new Error("Authentication error: Please log in again.");
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/stream-regenerate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 2. Add the token here
+        },
         body: JSON.stringify({
           source_material: sourceMaterial,
           tone: tone || "Professional & Trustworthy",
@@ -320,7 +334,7 @@ export default function App() {
       <div className="absolute inset-0 z-0 h-full w-full bg-zinc-950 pointer-events-none flex justify-center">
         <div className="absolute inset-0 bg-[radial-gradient(#4f4f5640_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_60%,transparent_100%)]" />
         
-        {/*<div className="absolute top-[-5%] w-[600px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />*
+        {/*<div className="absolute top-[-5%] w-[600px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />*/}
       </div>
 
       <div className="relative z-10 max-w-screen-2xl mx-auto p-4 sm:p-8">
@@ -375,29 +389,4 @@ export default function App() {
   );
   
  return <LandingHero />;
-}
-*/
-
-import LandingHero from "@/components/LandingHero";
-import LandingTicker from "@/components/LandingTicker";
-import LandingChat from "@/components/LandingChat";
-import LandingFeatures from "@/components/LandingFeatures";
-import LandingCTA from "@/components/LandingCTA";
-
-export default function Home() {
-  return (
-    <main className="min-h-screen bg-zinc-950 selection:bg-indigo-500/30 overflow-x-hidden font-sans">
-      
-      <LandingHero />
-      
-      <LandingTicker />
-      
-      <LandingChat />
-      
-      <LandingFeatures />
-      
-      <LandingCTA />
-      
-    </main>
-  );
 }

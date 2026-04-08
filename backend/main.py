@@ -14,6 +14,36 @@ import os
 
 
 load_dotenv()
+import os
+from fastapi import Depends, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from supabase import create_client, Client
+
+security = HTTPBearer()
+
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_ANON_KEY")
+
+if not supabase_url or not supabase_key:
+    print("\n[WARNING] Missing SUPABASE_URL or SUPABASE_ANON_KEY in backend .env!\n")
+
+supabase_client: Client = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
+
+def verify_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not supabase_client:
+        raise HTTPException(status_code=500, detail="Supabase not configured on backend")
+        
+    token = credentials.credentials
+    try:
+        user_response = supabase_client.auth.get_user(token)
+        
+        if not user_response or not user_response.user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+            
+        return user_response.user
+    except Exception as e:
+        print(f"[DEBUG] Auth failed: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 app = FastAPI(title="Autonomous Content Factory API")
 
@@ -220,9 +250,9 @@ def run_crew_in_background(request: CampaignRequest, message_queue: Queue):
         message_queue.put({"type": "error", "message": f"Pipeline Error: {str(e)}"})
 
 @app.post("/api/stream-campaign")
-async def stream_campaign(request: CampaignRequest):
+async def stream_campaign(request: CampaignRequest, user: dict = Depends(verify_user)):
+    
     message_queue = Queue()
-
     thread = threading.Thread(target=run_crew_in_background, args=(request, message_queue))
     thread.start()
 
@@ -345,7 +375,7 @@ def run_single_regeneration(request: RegenerateRequest, message_queue: Queue):
         message_queue.put({"type": "error", "message": f"Pipeline Error: {str(e)}"})
 
 @app.post("/api/stream-regenerate")
-async def stream_regenerate(request: RegenerateRequest):
+async def stream_regenerate(request: RegenerateRequest, user: dict = Depends(verify_user)):
     message_queue = Queue()
     thread = threading.Thread(target=run_single_regeneration, args=(request, message_queue))
     thread.start()

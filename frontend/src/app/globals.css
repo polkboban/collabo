@@ -60,3 +60,85 @@ body {
 .animate-aurora {
   animation: aurora-pan 40s linear infinite;
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;      /* Deep Zinc */
+    --foreground: 0 0% 98%;          /* Off-white */
+    
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 0 0% 98%;             /* White accents */
+    --primary-foreground: 240 5.9% 10%;
+    
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%; /* Subtle gray text */
+    
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[hsl(var(--border))];
+  }
+  body {
+    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))] antialiased selection:bg-white/20;
+  }
+}
+
+/* Custom scrollbar for that premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* --- Custom Animations for Landing Page --- */
+
+@layer utilities {
+  .animate-gradient-x {
+    animation: gradient-x 3s ease infinite;
+  }
+  .animate-marquee {
+    animation: marquee 30s linear infinite;
+  }
+  .animate-gradient-x {
+    animation: gradient-x 3s ease infinite;
+  }
+}
+
+@keyframes gradient-x {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); } 
+}
