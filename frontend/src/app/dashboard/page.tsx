@@ -137,7 +137,6 @@ export default function App() {
     setStreamMessage("Connecting to Autonomous Content Factory...");
 
     try {
-      // 1. Get the active session token
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
@@ -147,7 +146,7 @@ export default function App() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // 2. Add the token here
+          "Authorization": `Bearer ${token}` 
         },
         body: JSON.stringify({ 
           source_material: sourceMaterial, 
@@ -230,7 +229,6 @@ export default function App() {
     setStreamMessage(`Initiating targeted regeneration for ${tabKey}...`);
 
     try {
-      // 1. Get the active session token
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
@@ -240,7 +238,7 @@ export default function App() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // 2. Add the token here
+          "Authorization": `Bearer ${token}` 
         },
         body: JSON.stringify({
           source_material: sourceMaterial,

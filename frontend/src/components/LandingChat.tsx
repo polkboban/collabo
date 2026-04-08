@@ -34,7 +34,6 @@ export default function LandingChat() {
     <section className="relative w-full bg-zinc-950 mx-auto px-4 sm:px-6 lg:px-8 py-32 z-30">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
         
-        {/* Left Side: Sticky Copy */}
         <div className="lg:sticky lg:top-40 space-y-8">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
@@ -59,10 +58,8 @@ export default function LandingChat() {
           </motion.p>
         </div>
 
-        {/* Right Side: High-Octane Chat Interface */}
         <div className="relative flex flex-col space-y-8 pt-10 lg:pt-0">
           
-          {/* Connecting Neural Line */}
           <div className="absolute left-[38px] top-10 bottom-10 w-[2px] bg-gradient-to-b from-indigo-500/50 via-purple-500/20 to-transparent hidden sm:block" />
 
           {CHAT_SEQUENCE.map((msg, index) => {
@@ -79,7 +76,6 @@ export default function LandingChat() {
                 transition={{ duration: 0.6, delay: index * 0.3, type: "spring", bounce: 0.4 }}
                 className={`relative flex gap-6 w-full max-w-xl ${isUser ? "ml-auto" : "mr-auto"}`}
               >
-                {/* Avatar with Glows */}
                 {!isUser && (
                   <div className="shrink-0 relative z-10 hidden sm:block mt-4">
                     
@@ -91,13 +87,11 @@ export default function LandingChat() {
                   </div>
                 )}
 
-                {/* Bubble Content */}
                 <div className={`p-6 rounded-3xl text-lg leading-relaxed shadow-2xl relative overflow-hidden group ${
                   isUser 
                     ? "bg-zinc-100 text-zinc-950 rounded-tr-sm ml-auto"
                     : "bg-zinc-900/80 border border-white/5 text-zinc-300 rounded-tl-sm backdrop-blur-xl ring-1 ring-white/10"
                 }`}>
-                  {/* Subtle hover gradient inside system bubbles */}
                   {!isUser && <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />}
                   
                   <span className="relative z-10">{msg.text}</span>

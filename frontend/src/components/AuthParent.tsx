@@ -27,7 +27,6 @@ export default function AuthParent() {
           password,
         });
         if (error) throw error;
-        // Optionally show a "check your email" message here
       }
     } catch (err: any) {
       setAuthError(err.message || "An error occurred during authentication.");
