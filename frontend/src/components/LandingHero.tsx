@@ -66,7 +66,7 @@ export default function LandingHero() {
         >
           Tools promised efficiency. <br className="hidden md:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 animate-gradient-x">
-            We built an agent swarm.
+            Collabo delivers autonomy.
           </span>
         </motion.h1>
 
